@@ -10,4 +10,4 @@ Build the [Eclipse Dirigible](https://github.com/eclipse/dirigible), deploy on e
 
 ## License
 
-Forked from: [Monaco](https://github.com/e...)
+Forked from: [Monaco](https://github.com/Microsoft/monaco-editor)
