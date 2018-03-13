@@ -6,7 +6,7 @@ Monaco Plugin for the [Eclipse Dirigible](https://github.com/eclipse/dirigible) 
 
 Build the [Eclipse Dirigible](https://github.com/eclipse/dirigible), deploy on e.g. Tomcat Web Container and go to location:
 
-> http://localhost:8080/services/v3/web/ide-editor-monaco/editor.html
+> http://localhost:8080/services/v3/web/ide-monaco/editor.html
 
 ## License
 
