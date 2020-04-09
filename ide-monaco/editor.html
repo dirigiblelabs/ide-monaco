@@ -158,8 +158,7 @@
 							}
 							var editor = monaco.editor.create(containerEl, {
 								value: "var x = 0;",
-								language: 'javascript',
-								automaticLayout: true // the important part
+								automaticLayout: true
 							});
 							resolve(editor);
 							window.onresize = function (){
