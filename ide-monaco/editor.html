@@ -18,6 +18,9 @@
             left: 0;
             right: 0;
         }
+		.editor{
+			height: 100%;
+		}
 		</style>
 	    <script src="../../../../../services/v4/web/ide-core/ui/message-hub.js"></script>
     </head>
@@ -153,8 +156,15 @@
 								for(var i = 0; i < containerEl.childElementCount; i++)
 									containerEl.removeChild(containerEl.children.item(i));
 							}
-							var editor = monaco.editor.create(containerEl);
+							var editor = monaco.editor.create(containerEl, {
+								value: "var x = 0;",
+								language: 'javascript',
+								automaticLayout: true // the important part
+							});
 							resolve(editor);
+							window.onresize = function (){
+								editor.layout();
+							};
 						} catch (err){
 							reject(err);
 						}
