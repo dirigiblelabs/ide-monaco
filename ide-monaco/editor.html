@@ -372,6 +372,7 @@
 												documentation: {
 													value: e.documentation
 												},
+												detail: e.isFunction ? "function " + e.name : e.name,
 												insertText: insertText,
 												range: range
 											}
