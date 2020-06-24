@@ -583,15 +583,11 @@
 							});
 							monaco.languages.registerCompletionItemProvider('javascript', {
 							    provideCompletionItems: function(model, position) {
-							        // find out if we are completing a property in the 'dependencies' object.
-//							        var wordObject = model.getWordUntilPosition(position);
 							        var token = model.getValueInRange({startLineNumber: position.lineNumber, startColumn: 1, endLineNumber: position.lineNumber, endColumn: position.column})
 
-//									var moduleImport = moduleImports.filter(e => token.match(new RegExp(e.keyWord + ".", "g")))[0];
 							        var moduleImport = moduleImports.filter(e => token.match(new RegExp(e.keyWord + "." + "([a-zA-Z0-9]+)?", "g")))[0];
 									var afterDotToken = token.substring(token.indexOf(".") + 1);
 									var tokenParts = token.split(".");
-									// var lastTokenPart = tokenParts.length > 2 ? tokenParts[tokenParts.length - 2] : tokenParts[1];
 									var moduleName = moduleImport ? moduleImport.module : null;
 									var nestedObjectKeyword = null;
 									if (!moduleName) {
@@ -622,9 +618,6 @@
 											}
 										})
 									}
-									debugger
-									// TODO Get something from codeCompletionNestedObjectsSuggestions
-									codeCompletionNestedObjectsSuggestions;
 							        return {
 										suggestions: suggestions
 										.filter(function(e) {
@@ -634,15 +627,6 @@
 											return true;
 										})
 										.map(function(e) {
-											let insertText = null;
-											// if (lastTokenPart) {
-											// 	insertText = e.fqn.substring(afterDotToken.length);
-											// 	insertText = insertText.substring(insertText.lastIndexOf(".") + 1);
-											// } else {
-											// 	insertText = e.name.substring(afterDotToken.length);
-											// }
-											// insertText = e.name.substring(afterDotToken.length);
-											insertText = e.name;
 											return {
 												label: e.name,
 												kind: e.isFunction ? monaco.languages.CompletionItemKind.Function : monaco.languages.CompletionItemKind.Field,
@@ -650,7 +634,7 @@
 													value: e.documentation
 												},
 												detail: e.isFunction ? "function " + e.name : e.name,
-												insertText: insertText,
+												insertText: e.name,
 												range: range
 											}
 										})
@@ -669,7 +653,6 @@
 							7006, // Parameter 'ctx' implicitly has an 'any' type.(7006),
 							7009, // 'new' expression, whose target lacks a construct signature, implicitly has an 'any' type.(7009)
 							7034  // Variable 'ctx' implicitly has type 'any' in some locations where its type cannot be determined.(7034)
-
 						]
 					});
 					monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
