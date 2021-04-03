@@ -608,6 +608,9 @@
 									var afterDotToken = token.substring(token.indexOf(".") + 1);
 									var tokenParts = token.split(".");
 									var moduleName = moduleImport ? moduleImport.module : null;
+									if (tokenParts != null && tokenParts.length > 2) {
+										moduleName = null;
+									}
 									var nestedObjectKeyword = null;
 									if (!moduleName) {
 										var nestedKeyword = token.split(" ").filter(e => e.indexOf(".") > 0)[0]
