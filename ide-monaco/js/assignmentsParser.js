@@ -6,13 +6,17 @@ function parseAssignments(acorn, fileContent) {
         flatParsedBody(parsed);
 
         let requires = getRequires(parsed);
-        let assignments = getAssignments(requires, parsed);;
+        let assignments = getAssignments(requires, parsed);
+        let passedObjectKeys = [];
         allAssignments = Object.assign({}, assignments);
+        let isCyclicAssignment = false;
 
         do {
             assignments = getAssignments(assignments, parsed);
+            passedObjectKeys = passedObjectKeys.concat(Object.keys(assignments));
             allAssignments = Object.assign(allAssignments, assignments);
-        } while (!isEmptyObject(assignments));
+            Object.keys(assignments).forEach(e => isCyclicAssignment = passedObjectKeys.includes(e));
+        } while (!isEmptyObject(assignments) && !isCyclicAssignment);
 
     } catch (e) {
         // Do nothing
