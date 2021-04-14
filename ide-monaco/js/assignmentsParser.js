@@ -1,3 +1,5 @@
+const MAX_ASSIGNMENTS_COUNT = 10000;
+
 function parseAssignments(acorn, fileContent) {
     let allAssignments = {};
 
@@ -9,12 +11,14 @@ function parseAssignments(acorn, fileContent) {
         let assignments = getAssignments(requires, parsed);
         let passedObjectKeys = [];
         allAssignments = Object.assign({}, assignments);
+        let loopCounter = 0;
 
         do {
             assignments = getAssignments(assignments, parsed);
             passedObjectKeys = passedObjectKeys.concat(Object.keys(assignments));
             allAssignments = Object.assign(allAssignments, assignments);
-        } while (!isEmptyObject(assignments));
+            loopCounter ++;
+        } while (!isEmptyObject(assignments) && loopCounter < MAX_ASSIGNMENTS_COUNT);
 
     } catch (e) {
         // Do nothing
