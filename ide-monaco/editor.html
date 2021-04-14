@@ -529,8 +529,6 @@
 							monaco.languages.registerCompletionItemProvider('javascript', {
 								triggerCharacters: ["\"", "'"],
 							    provideCompletionItems: function(model, position) {
-							        // find out if we are completing a property in the 'dependencies' object.
-//							        var wordObject = model.getWordUntilPosition(position);
 							        var token = model.getValueInRange({startLineNumber: position.lineNumber, startColumn: 1, endLineNumber: position.lineNumber, endColumn: position.column})
 							        if (token.indexOf('require("') < 0 && token.indexOf('require(\'') < 0) {
 							            return { suggestions: [] };
@@ -554,7 +552,7 @@
 											return {
 												label: e.name,
 												kind: monaco.languages.CompletionItemKind.Module,
-												documentation: e.description,
+												documentation: e.documentation,
 												detail: e.description,
 												insertText: e.name,
 												range: range
