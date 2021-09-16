@@ -170,11 +170,9 @@
                 createEditorInstance()
                     .then((editor) => {
                         diffEditor = editor;
-                        let originalModel = monaco.editor.createModel("", "text");
-                        let modifiedModel = monaco.editor.createModel("", "text");
                         diffEditor.setModel({
-                            original: originalModel,
-                            modified: modifiedModel
+                            original: monaco.editor.createModel("", "text"),
+                            modified: monaco.editor.createModel("", "text")
                         });
                     });
                 monaco.editor.setTheme(monacoTheme);
@@ -186,14 +184,22 @@
                 fileIO.loadDiff(project, file)
                     .then((diff) => {
                         let fileType = fileIO.resolveFileType(file);
-                        let originalModel = monaco.editor.createModel(diff.original, fileType);
-                        let modifiedModel = monaco.editor.createModel(diff.modified, fileType);
                         diffEditor.setModel({
-                            original: originalModel,
-                            modified: modifiedModel
+                            original: monaco.editor.createModel(diff.original, fileType),
+                            modified: monaco.editor.createModel(diff.modified, fileType)
                         });
                     });
             }, "git.staging.file.diff");
+
+            messageHub.subscribe(function() {
+                fileIO.loadDiff(project, file)
+                    .then((diff) => {
+                        diffEditor.setModel({
+                            original: monaco.editor.createModel("", "text"),
+                            modified: monaco.editor.createModel("", "text")
+                        });
+                    });
+            }, "git.diff.view.clear");
         })();
 
     </script>
