@@ -43,7 +43,7 @@
             let __URL = URL;
             this.gitApiUrl = '/services/v4/ide/git';
 
-            this.resolveFileType = function(file) {
+            this.resolveFileType = function (file) {
                 if (!file) return "text";
 
                 let mappings = [{
@@ -105,7 +105,7 @@
                 return "text";
             };
 
-            this.loadDiff = function(project, file) {
+            this.loadDiff = function (project, file) {
                 return new Promise((resolve, reject) => {
                     if (file) {
                         let url = this.gitApiUrl + "/" + project + "/diff?path=" + file;
@@ -178,7 +178,7 @@
                 monaco.editor.setTheme(monacoTheme);
             })
 
-            messageHub.subscribe(function(msg) {
+            messageHub.subscribe(function (msg) {
                 let project = msg.data.project;
                 let file = msg.data.file;
                 fileIO.loadDiff(project, file)
@@ -191,14 +191,11 @@
                     });
             }, "git.staging.file.diff");
 
-            messageHub.subscribe(function() {
-                fileIO.loadDiff(project, file)
-                    .then((diff) => {
-                        diffEditor.setModel({
-                            original: monaco.editor.createModel("", "text"),
-                            modified: monaco.editor.createModel("", "text")
-                        });
-                    });
+            messageHub.subscribe(function () {
+                diffEditor.setModel({
+                    original: monaco.editor.createModel("", "text"),
+                    modified: monaco.editor.createModel("", "text")
+                });
             }, "git.diff.view.clear");
         })();
 
