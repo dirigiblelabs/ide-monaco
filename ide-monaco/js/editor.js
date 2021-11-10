@@ -144,6 +144,9 @@ function FileIO() {
         }, {
             extension: ".csvim",
             type: "json"
+        }, {
+            extension: ".calculationview",
+            type: "xml"
         }];
 
         for (let i = 0; i < mappings.length; i++) {
