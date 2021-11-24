@@ -497,7 +497,7 @@ function traverseAssignment(assignment, assignmentInfo) {
 
     loadModuleSuggestions(modulesSuggestions);
 
-    require(['vs/editor/editor.main', 'parser/acorn-loose.min'], function (monaco, acornLoose) {
+    require(['vs/editor/editor.main', 'parser/acorn-loose'], function (monaco, acornLoose) {
         let fileIO = new FileIO();
         let fileName = fileIO.resolveFileName();
         let readOnly = fileIO.isReadOnly();
