@@ -255,7 +255,7 @@ function createSaveAction() {
 
         // An optional array of keybindings for the action.
         keybindings: [
-            monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S
+            monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS
         ],
 
         // A precondition for this action.
@@ -273,7 +273,6 @@ function createSaveAction() {
         run: function (editor) {
             let fileIO = new FileIO();
             fileIO.saveText(editor.getModel().getValue());
-            return null;
         }
     };
 };
@@ -288,7 +287,7 @@ function createSearchAction() {
 
         // An optional array of keybindings for the action.
         keybindings: [
-            monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KEY_F
+            monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF
         ],
 
         // A precondition for this action.
@@ -321,7 +320,7 @@ function createCloseAction() {
 
         // An optional array of keybindings for the action.
         keybindings: [
-            monaco.KeyMod.Alt | monaco.KeyCode.KEY_W
+            monaco.KeyMod.Alt | monaco.KeyCode.KeyW
         ],
 
         // A precondition for this action.
@@ -353,7 +352,7 @@ function createCloseOthersAction() {
 
         // An optional array of keybindings for the action.
         keybindings: [
-            monaco.KeyMod.Alt | monaco.KeyMod.WinCtrl | monaco.KeyMod.Shift | monaco.KeyCode.KEY_W
+            monaco.KeyMod.Alt | monaco.KeyMod.WinCtrl | monaco.KeyMod.Shift | monaco.KeyCode.KeyW
         ],
 
         // A precondition for this action.
@@ -385,7 +384,7 @@ function createCloseAllAction() {
 
         // An optional array of keybindings for the action.
         keybindings: [
-            monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KEY_W
+            monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyW
         ],
 
         // A precondition for this action.
