@@ -240,7 +240,7 @@ function createEditorInstance(readOnly = false) {
                 window.onresize = function () {
                     editor.layout();
                 };
-                if (loadingOverview) loadingOverview.style.display = "none";
+                if (loadingOverview) loadingOverview.classList.add("hide");
             } catch (err) {
                 reject(err);
             }
@@ -275,11 +275,11 @@ function createSaveAction() {
         // @param editor The editor instance is passed in as a convinience
         run: function (editor) {
             loadingMessage.innerText = 'Saving...';
-            if (loadingOverview) loadingOverview.style.display = "flex";
+            if (loadingOverview) loadingOverview.classList.remove("hide");
             editor.getAction('editor.action.formatDocument').run().then(() => {
                 let fileIO = new FileIO();
                 fileIO.saveText(editor.getModel().getValue());
-                if (loadingOverview) loadingOverview.style.display = "none";
+                if (loadingOverview) loadingOverview.classList.add("hide");
             });
         }
     };
@@ -758,6 +758,7 @@ function traverseAssignment(assignment, assignmentInfo) {
             indent_size: 2,
             newline_between_rules: false,
             end_with_newline: true,
+            indent_with_tabs: false,
         });
         monaco.editor.setTheme(monacoTheme);
     });
