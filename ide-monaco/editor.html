@@ -14,18 +14,30 @@
 		<script type="text/javascript" src="monaco-editor/min/vs/loader.js"></script>
 		<script type="text/javascript" src="js/formatters/css-format-monaco.min.js"></script>
 		<script type="text/javascript" src="js/assignmentsParser.js"></script>
+		<style>
+			.updatedLineClass {
+				background: rgba(123, 123, 123, 0.4);
+				left: 100% !important;
+				position: absolute !important;
+				display: block;
+				left: 100% !important;
+				margin-left: -5px !important;
+				width: 5px;
+				height: 100% !important;
+				top: 0px !important;
+
+			}
+
+		</style>
 	</head>
 
 	<body id="monaco-browser" spellcheck="false">
-
 		<div class="loading-overview">
 			<div class="loading-message">Loading...</div>
 		</div>
-
 		<div id="embeddedEditor"></div>
-
+		<script type="text/javascript" src="js/diff.js"></script>
 		<script type="text/javascript" src="js/editor.js"></script>
-
 	</body>
 
 </html>

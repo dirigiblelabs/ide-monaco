@@ -10,12 +10,29 @@ let resourceApiUrl;
 let editorUrl;
 let loadingOverview = document.getElementsByClassName('loading-overview')[0];
 let loadingMessage = document.getElementsByClassName('loading-message')[0];
+let decorations;
 
 /*eslint-disable no-extend-native */
 String.prototype.replaceAll = function (search, replacement) {
     let target = this;
     return target.replace(new RegExp(search, 'g'), replacement);
 };
+
+const highlight_changed = (rows, editor, decorations) => {
+    return editor.deltaDecorations(decorations, [
+        ...rows.map((row) => {
+            return {
+                range: new monaco.Range(row, 1, row, 1),
+                options: {
+                    isWholeLine: false,
+                    minimap: { enabled: true, color: "black" },
+                    overviewRuler: true,
+                    glyphMarginClassName: "updatedLineClass",
+                },
+            };
+        }),
+    ]);
+}
 
 function FileIO() {
 
@@ -234,7 +251,8 @@ function createEditorInstance(readOnly = false) {
                 let editor = monaco.editor.create(containerEl, {
                     value: "let x = 0;",
                     automaticLayout: true,
-                    readOnly: readOnly
+                    readOnly: readOnly,
+                    glyphMargin: true
                 });
                 resolve(editor);
                 window.onresize = function () {
@@ -521,6 +539,7 @@ function traverseAssignment(assignment, assignmentInfo) {
             })
             .then((editor) => {
                 _editor = editor;
+                decorations = _editor.deltaDecorations([], []);
                 return _fileText;
             })
             .then((fileText) => {
@@ -554,6 +573,11 @@ function traverseAssignment(assignment, assignmentInfo) {
                     _editor.onDidChangeModelContent(function (e) {
                         if (e.changes && e.changes[0].text === ".") {
                             codeCompletionAssignments = parseAssignments(acornLoose, _editor.getValue());
+                        }
+                        if (e.changes) {
+                            let content = _editor.getValue();
+                            let rows = computeNewLines(_fileText, content, true);
+                            decorations = highlight_changed(rows, _editor, decorations);
                         }
                         let newModuleImports = getModuleImports(_editor.getValue());
                         if (e && !dirty) {
