@@ -203,6 +203,98 @@ function FileIO() {
             }
         });
     };
+
+    this.projectGitLink = function (workspace, mainFolder) {
+
+        return new Promise((resolve, reject) => {
+            if (!mainFolder) {
+                resolve({});
+            } else {
+                workspace = workspace || 'workspace';
+
+                let savedStorage;
+                try {
+                    savedStorage = JSON.parse(localStorage.getItem('DIRIGIBLE.git_ws_link'));
+                } catch {
+                    savedStorage = {}
+                }
+                if (savedStorage[workspace] && savedStorage[workspace][mainFolder]) {
+                    resolve(savedStorage);
+                    return;
+                }
+                const xhrl = new XMLHttpRequest();
+                xhrl.open('GET', "/services/v4/ide/git/" + workspace + '/');
+                xhrl.setRequestHeader('X-CSRF-Token', 'Fetch');
+                xhrl.onload = () => {
+                    if (xhrl.status === 200) {
+                        let git_ws_link = JSON.parse(xhrl.response);
+                        let gitresource = '';
+                        for (let i = 0; i < git_ws_link.length; i++) {
+                            if (git_ws_link[i].git && git_ws_link[i].folders[0].name === mainFolder) {
+                                gitresource = git_ws_link[i].name;
+                                if (savedStorage[workspace]) {
+                                    savedStorage = { ...savedStorage, [workspace]: { ...savedStorage[workspace], [mainFolder]: gitresource } };
+                                } else {
+                                    savedStorage = { ...savedStorage, [workspace]: { [mainFolder]: gitresource } };
+                                }
+                                localStorage.setItem('DIRIGIBLE.git_ws_link', JSON.stringify(savedStorage));
+                                resolve({ [workspace]: { [mainFolder]: gitresource } });
+                                break;
+                            }
+                        }
+                    } else {
+                        resolve(false)
+                    }
+                    csrfToken = xhrl.getResponseHeader("x-csrf-token");
+                }
+                xhrl.onerror = () => {
+                    reject(false)
+                };
+                xhrl.send();
+            }
+        });
+    };
+
+    this.loadGitText = function (fileName) {
+        return new Promise((resolve) => {
+            if (!fileName) {
+                resolve(``);
+            } else {
+                fileName = fileName || this.resolveFileName();
+                let workspace = fileName.replace('\\', '/').split('/')[1];
+                let workFolder = fileName.replace('\\', '/').split('/')[2];
+                this.projectGitLink(workspace, workFolder).then((git_ws_link) => {
+                    if (git_ws_link[workspace][workFolder]) {
+                        const xhrg = new XMLHttpRequest();
+                        const filePathInGit = fileName.replace('\\', '/').split('/').slice(2).join('/');
+                        xhrg.open('GET', "/services/v4/ide/git/" + workspace + "/" + git_ws_link[workspace][workFolder] + "/diff?path=" + filePathInGit);
+                        xhrg.setRequestHeader('X-CSRF-Token', 'Fetch');
+                        xhrg.onload = () => {
+                            if (xhrg.status === 200) {
+                                try {
+                                    const origText = JSON.parse(xhrg.response);
+                                    if (origText.original)
+                                        resolve(origText.original)
+                                    else
+                                        resolve(``)
+                                } catch {
+                                    resolve(``)
+                                }
+                            } else {
+                                resolve(``)
+                            }
+                            csrfToken = xhrg.getResponseHeader("x-csrf-token");
+                        };
+                        xhrg.onerror = () => resolve(``);
+                        xhrg.send();
+                    } else
+                        resolve('')
+                }).catch((error) => { console.log(error); resolve(``) });
+
+            }
+        });
+    };
+
     this.saveText = function (text, fileName) {
         return new Promise((resolve, reject) => {
             fileName = fileName || this.resolveFileName();
@@ -528,9 +620,13 @@ function traverseAssignment(assignment, assignmentInfo) {
         let fileName = fileIO.resolveFileName();
         let readOnly = fileIO.isReadOnly();
         let _fileText;
+        let _fileGitText;
+        let resGitText = '';
+
         fileIO.loadText(fileName)
             .then((fileText) => {
                 _fileText = fileText;
+                _fileGitText = _fileText;
                 return createEditorInstance(readOnly);
             })
             .catch((status) => {
@@ -576,7 +672,7 @@ function traverseAssignment(assignment, assignmentInfo) {
                         }
                         if (e.changes) {
                             let content = _editor.getValue();
-                            let rows = computeNewLines(_fileText, content, true);
+                            let rows = computeNewLines(_fileGitText, content, true);
                             decorations = highlight_changed(rows, _editor, decorations);
                         }
                         let newModuleImports = getModuleImports(_editor.getValue());
@@ -601,6 +697,16 @@ function traverseAssignment(assignment, assignmentInfo) {
                             }
                         });
                     });
+
+                    try {
+                        fileIO.loadGitText(fileName).then((res) => {
+                            _fileGitText = res;
+                            let rows = computeNewLines(_fileGitText, fileText, true);
+                            decorations = highlight_changed(rows, _editor, decorations);
+                        });
+                    }
+                    catch { }
+
                     monaco.languages.typescript.javascriptDefaults.addExtraLib('/** Loads external module: \n\n> ```\nlet res = require("http/v4/response");\nres.println("Hello World!");``` */ var require = function(moduleName: string) {return new Module();};', 'js:require.js');
                     monaco.languages.typescript.javascriptDefaults.addExtraLib('/** $. XSJS API */ var $: any;', 'ts:$.js');
                     loadDTS();
