@@ -762,7 +762,7 @@ function traverseAssignment(assignment, assignmentInfo) {
                                 endColumn: position.column
                             })
 
-                            let moduleImport = moduleImports.filter(e => token.match(new RegExp(e.keyWord + "\." + "([a-zA-Z0-9]+)?", "g")))[0];
+                            let moduleImport = moduleImports.filter(e => token.match(new RegExp(e.keyWord + "." + "([a-zA-Z0-9]+)?", "g")))[0];
                             let afterDotToken = token.substring(token.indexOf(".") + 1);
                             let tokenParts = token.split(".");
                             let moduleName = moduleImport ? moduleImport.module : null;
