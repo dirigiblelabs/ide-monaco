@@ -8,9 +8,10 @@ let codeCompletionAssignments = {};
 let _editor;
 let resourceApiUrl;
 let editorUrl;
+let gitApiUrl;
 let loadingOverview = document.getElementsByClassName('loading-overview')[0];
 let loadingMessage = document.getElementsByClassName('loading-message')[0];
-let decorations;
+let lineDecorations = [];
 
 /*eslint-disable no-extend-native */
 String.prototype.replaceAll = function (search, replacement) {
@@ -18,16 +19,14 @@ String.prototype.replaceAll = function (search, replacement) {
     return target.replace(new RegExp(search, 'g'), replacement);
 };
 
-const highlight_changed = (rows, editor, decorations) => {
-    return editor.deltaDecorations(decorations, [
-        ...rows.map((row) => {
+function highlight_changed(lines, editor) {
+    return editor.deltaDecorations(lineDecorations, [
+        ...lines.map((line) => {
             return {
-                range: new monaco.Range(row, 1, row, 1),
+                range: new monaco.Range(line, 1, line, 1),
                 options: {
-                    isWholeLine: false,
-                    minimap: { enabled: true, color: "black" },
-                    overviewRuler: true,
-                    glyphMarginClassName: "updatedLineClass",
+                    isWholeLine: true,
+                    linesDecorationsClassName: 'monacoLineDecoration'
                 },
             };
         }),
@@ -38,6 +37,9 @@ function FileIO() {
 
     this.isReadOnly = function () {
         return editorUrl.searchParams.get('readOnly') || false;
+    };
+    this.resolveGitProjectName = function () {
+        return editorUrl.searchParams.get('gitName');
     };
     this.resolveFileName = function () {
         this.readOnly = editorUrl.searchParams.get('readOnly') || false;
@@ -180,19 +182,38 @@ function FileIO() {
 
         return 'text';
     };
-    this.loadText = function (fileName) {
+
+    this.loadText = function (file) {
         return new Promise((resolve, reject) => {
-            if (!fileName) {
-                reject(`HTTP ${400} - 'fileName' parameter cannot be '${fileName}'`);
-            } else {
+            if (file) {
+                let project = this.resolveGitProjectName();
+                let url;
+                if (project) {
+                    let workspace = file.replace('\\', '/').split('/')[1];
+                    url = `${gitApiUrl}/${workspace}/${project}/diff?path=${file.replace(`/${workspace}/`, '')}`;
+                } else {
+                    url = resourceApiUrl + file;
+                }
                 const xhr = new XMLHttpRequest();
-                fileName = fileName || this.resolveFileName();
-                xhr.open('GET', resourceApiUrl + fileName);
-                xhr.setRequestHeader('X-CSRF-Token', 'Fetch');
+                xhr.open("GET", url);
+                xhr.setRequestHeader("X-CSRF-Token", "Fetch");
                 xhr.setRequestHeader('Dirigible-Editor', 'Monaco');
                 xhr.onload = () => {
                     if (xhr.status === 200) {
-                        resolve(xhr.responseText);
+                        if (project) {
+                            let fileObject = JSON.parse(xhr.responseText);
+                            resolve({
+                                isGit: true,
+                                git: fileObject.original || "", // Means it`s not in git
+                                modified: fileObject.modified,
+                            });
+                        } else {
+                            resolve({
+                                isGit: false,
+                                git: "",
+                                modified: xhr.responseText,
+                            });
+                        }
                     } else {
                         reject(`HTTP ${xhr.status} - ${xhr.statusText}`)
                     }
@@ -200,97 +221,8 @@ function FileIO() {
                 };
                 xhr.onerror = () => reject(`HTTP ${xhr.status} - ${xhr.statusText}`);
                 xhr.send();
-            }
-        });
-    };
-
-    this.projectGitLink = function (workspace, mainFolder) {
-
-        return new Promise((resolve, reject) => {
-            if (!mainFolder) {
-                resolve({});
             } else {
-                workspace = workspace || 'workspace';
-
-                let savedStorage;
-                try {
-                    savedStorage = JSON.parse(localStorage.getItem('DIRIGIBLE.git_ws_link'));
-                } catch {
-                    savedStorage = {}
-                }
-                if (savedStorage[workspace] && savedStorage[workspace][mainFolder]) {
-                    resolve(savedStorage);
-                    return;
-                }
-                const xhrl = new XMLHttpRequest();
-                xhrl.open('GET', "/services/v4/ide/git/" + workspace + '/');
-                xhrl.setRequestHeader('X-CSRF-Token', 'Fetch');
-                xhrl.onload = () => {
-                    if (xhrl.status === 200) {
-                        let git_ws_link = JSON.parse(xhrl.response);
-                        let gitresource = '';
-                        for (let i = 0; i < git_ws_link.length; i++) {
-                            if (git_ws_link[i].git && git_ws_link[i].folders[0].name === mainFolder) {
-                                gitresource = git_ws_link[i].name;
-                                if (savedStorage[workspace]) {
-                                    savedStorage = { ...savedStorage, [workspace]: { ...savedStorage[workspace], [mainFolder]: gitresource } };
-                                } else {
-                                    savedStorage = { ...savedStorage, [workspace]: { [mainFolder]: gitresource } };
-                                }
-                                localStorage.setItem('DIRIGIBLE.git_ws_link', JSON.stringify(savedStorage));
-                                resolve({ [workspace]: { [mainFolder]: gitresource } });
-                                break;
-                            }
-                        }
-                    } else {
-                        resolve(false)
-                    }
-                    csrfToken = xhrl.getResponseHeader("x-csrf-token");
-                }
-                xhrl.onerror = () => {
-                    reject(false)
-                };
-                xhrl.send();
-            }
-        });
-    };
-
-    this.loadGitText = function (fileName) {
-        return new Promise((resolve) => {
-            if (!fileName) {
-                resolve(``);
-            } else {
-                fileName = fileName || this.resolveFileName();
-                let workspace = fileName.replace('\\', '/').split('/')[1];
-                let workFolder = fileName.replace('\\', '/').split('/')[2];
-                this.projectGitLink(workspace, workFolder).then((git_ws_link) => {
-                    if (git_ws_link[workspace][workFolder]) {
-                        const xhrg = new XMLHttpRequest();
-                        const filePathInGit = fileName.replace('\\', '/').split('/').slice(2).join('/');
-                        xhrg.open('GET', "/services/v4/ide/git/" + workspace + "/" + git_ws_link[workspace][workFolder] + "/diff?path=" + filePathInGit);
-                        xhrg.setRequestHeader('X-CSRF-Token', 'Fetch');
-                        xhrg.onload = () => {
-                            if (xhrg.status === 200) {
-                                try {
-                                    const origText = JSON.parse(xhrg.response);
-                                    if (origText.original)
-                                        resolve(origText.original)
-                                    else
-                                        resolve(``)
-                                } catch {
-                                    resolve(``)
-                                }
-                            } else {
-                                resolve(``)
-                            }
-                            csrfToken = xhrg.getResponseHeader("x-csrf-token");
-                        };
-                        xhrg.onerror = () => resolve(``);
-                        xhrg.send();
-                    } else
-                        resolve('')
-                }).catch((error) => { console.log(error); resolve(``) });
-
+                reject(`HTTP ${400} - 'fileName' parameter cannot be '${fileName}'`);
             }
         });
     };
@@ -323,6 +255,7 @@ function FileIO() {
 };
 
 function setResourceApiUrl() {
+    gitApiUrl = "/services/v4/ide/git";
     editorUrl = new URL(window.location.href);
     let rtype = editorUrl.searchParams.get('rtype');
     if (rtype === "workspace") resourceApiUrl = "/services/v4/ide/workspaces";
@@ -344,7 +277,6 @@ function createEditorInstance(readOnly = false) {
                     value: "let x = 0;",
                     automaticLayout: true,
                     readOnly: readOnly,
-                    glyphMargin: true
                 });
                 resolve(editor);
                 window.onresize = function () {
@@ -619,14 +551,11 @@ function traverseAssignment(assignment, assignmentInfo) {
         let fileIO = new FileIO();
         let fileName = fileIO.resolveFileName();
         let readOnly = fileIO.isReadOnly();
-        let _fileText;
-        let _fileGitText;
-        let resGitText = '';
+        let _fileObject;
 
         fileIO.loadText(fileName)
-            .then((fileText) => {
-                _fileText = fileText;
-                _fileGitText = _fileText;
+            .then((fileObject) => {
+                _fileObject = fileObject;
                 return createEditorInstance(readOnly);
             })
             .catch((status) => {
@@ -635,8 +564,7 @@ function traverseAssignment(assignment, assignmentInfo) {
             })
             .then((editor) => {
                 _editor = editor;
-                decorations = _editor.deltaDecorations([], []);
-                return _fileText;
+                return _fileObject.modified;
             })
             .then((fileText) => {
                 if (fileName) {
@@ -653,6 +581,14 @@ function traverseAssignment(assignment, assignmentInfo) {
                         }
                     }, "workbench.editor.save");
 
+                    _editor.onDidChangeModel(function () {
+                        if (_fileObject.isGit) {
+                            lineDecorations = highlight_changed(
+                                computeNewLines(_fileObject.git, fileText, true),
+                                _editor
+                            );
+                        }
+                    });
                     let model = monaco.editor.createModel(fileText, fileType || 'text');
                     _editor.setModel(model);
                     if (!readOnly) {
@@ -670,10 +606,10 @@ function traverseAssignment(assignment, assignmentInfo) {
                         if (e.changes && e.changes[0].text === ".") {
                             codeCompletionAssignments = parseAssignments(acornLoose, _editor.getValue());
                         }
-                        if (e.changes) {
+                        if (_fileObject.isGit && e.changes) {
                             let content = _editor.getValue();
-                            let rows = computeNewLines(_fileGitText, content, true);
-                            decorations = highlight_changed(rows, _editor, decorations);
+                            let diffLines = computeNewLines(_fileObject.git, content, true);
+                            lineDecorations = highlight_changed(diffLines, _editor);
                         }
                         let newModuleImports = getModuleImports(_editor.getValue());
                         if (e && !dirty) {
@@ -697,15 +633,6 @@ function traverseAssignment(assignment, assignmentInfo) {
                             }
                         });
                     });
-
-                    try {
-                        fileIO.loadGitText(fileName).then((res) => {
-                            _fileGitText = res;
-                            let rows = computeNewLines(_fileGitText, fileText, true);
-                            decorations = highlight_changed(rows, _editor, decorations);
-                        });
-                    }
-                    catch { }
 
                     monaco.languages.typescript.javascriptDefaults.addExtraLib('/** Loads external module: \n\n> ```\nlet res = require("http/v4/response");\nres.println("Hello World!");``` */ var require = function(moduleName: string) {return new Module();};', 'js:require.js');
                     monaco.languages.typescript.javascriptDefaults.addExtraLib('/** $. XSJS API */ var $: any;', 'ts:$.js');
@@ -763,7 +690,7 @@ function traverseAssignment(assignment, assignmentInfo) {
                             })
 
                             let moduleImport = moduleImports.filter(e => token.match(new RegExp(e.keyWord + "." + "([a-zA-Z0-9]+)?", "g")))[0];
-                            let afterDotToken = token.substring(token.indexOf(".") + 1);
+                            // let afterDotToken = token.substring(token.indexOf(".") + 1);
                             let tokenParts = token.split(".");
                             let moduleName = moduleImport ? moduleImport.module : null;
                             if (tokenParts != null && tokenParts.length > 2) {
