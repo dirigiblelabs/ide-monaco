@@ -19,7 +19,7 @@ String.prototype.replaceAll = function (search, replacement) {
     return target.replace(new RegExp(search, 'g'), replacement);
 };
 
-const computeNewLines = (oldText, newText, isWhitespaceIgnored = true) => {
+function computeNewLines(oldText, newText, isWhitespaceIgnored = true) {
     if (
         oldText[oldText.length - 1] !== "\n" ||
         newText[newText.length - 1] !== "\n"
@@ -53,15 +53,15 @@ const computeNewLines = (oldText, newText, isWhitespaceIgnored = true) => {
     return { updated: addedLines, removed: removedLines };
 };
 
-const highlight_changed = (lines, editor) => {
+function highlight_changed(lines, editor) {
     let new_decorations = [];
     lines.updated.forEach((line) => {
         new_decorations.push({
             range: new monaco.Range(line, 1, line, 1),
             options: {
                 isWholeLine: true,
-                linesDecorationsClassName: 'monacoLineDecoration' + (
-                    lines.removed.includes(line) ? ' deletedLine' : '')
+                linesDecorationsClassName: 'modified-line' + (
+                    lines.removed.includes(line) ? ' deleted-line' : '')
             },
         });
     });
@@ -71,7 +71,7 @@ const highlight_changed = (lines, editor) => {
                 range: new monaco.Range(line, 1, line, 1),
                 options: {
                     isWholeLine: true,
-                    linesDecorationsClassName: 'deletedLine'
+                    linesDecorationsClassName: 'deleted-line'
                 },
             });
     });
@@ -629,7 +629,7 @@ function traverseAssignment(assignment, assignmentInfo) {
                     _editor.onDidChangeModel(function () {
                         if (_fileObject.isGit) {
                             lineDecorations = highlight_changed(
-                                computeNewLines(_fileObject.git, fileText, true),
+                                computeNewLines(_fileObject.git, fileText),
                                 _editor
                             );
                         }
@@ -653,9 +653,10 @@ function traverseAssignment(assignment, assignmentInfo) {
                         }
                         if (_fileObject.isGit && e.changes) {
                             let content = _editor.getValue();
-
-                            let diffLines = computeNewLines(_fileObject.git, content, true);
-                            lineDecorations = highlight_changed(diffLines, _editor);
+                            lineDecorations = highlight_changed(
+                                computeNewLines(_fileObject.git, content),
+                                _editor
+                            );
                         }
                         let newModuleImports = getModuleImports(_editor.getValue());
                         if (e && !dirty) {
