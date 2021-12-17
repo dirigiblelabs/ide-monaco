@@ -19,7 +19,7 @@ String.prototype.replaceAll = function (search, replacement) {
     return target.replace(new RegExp(search, 'g'), replacement);
 };
 
-function computeNewLines(oldText, newText, isWhitespaceIgnored = true) {
+function getNewLines(oldText, newText, isWhitespaceIgnored = true) {
     if (
         oldText[oldText.length - 1] !== "\n" ||
         newText[newText.length - 1] !== "\n"
@@ -629,7 +629,7 @@ function traverseAssignment(assignment, assignmentInfo) {
                     _editor.onDidChangeModel(function () {
                         if (_fileObject.isGit) {
                             lineDecorations = highlight_changed(
-                                computeNewLines(_fileObject.git, fileText),
+                                getNewLines(_fileObject.git, fileText),
                                 _editor
                             );
                         }
@@ -654,7 +654,7 @@ function traverseAssignment(assignment, assignmentInfo) {
                         if (_fileObject.isGit && e.changes) {
                             let content = _editor.getValue();
                             lineDecorations = highlight_changed(
-                                computeNewLines(_fileObject.git, content),
+                                getNewLines(_fileObject.git, content),
                                 _editor
                             );
                         }
