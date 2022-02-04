@@ -316,8 +316,8 @@ function FileIO() {
 };
 
 function getViewParameters() {
-    if (window.frameElement.hasAttribute("parameters")) {
-        let params = JSON.parse(window.frameElement.getAttribute("parameters"));
+    if (window.frameElement.hasAttribute("data-parameters")) {
+        let params = JSON.parse(window.frameElement.getAttribute("data-parameters"));
         parameters.resourceType = params["resourceType"] || "/services/v4/ide/workspaces";
         parameters.contentType = params["contentType"] || "";
         parameters.readOnly = params["readOnly"] || false;
