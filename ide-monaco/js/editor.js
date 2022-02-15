@@ -1,6 +1,7 @@
 let messageHub = new FramesMessageHub();
 let csrfToken;
-let dirty = false;
+let _dirty = false;
+let lastSavedVersionId;
 
 let modulesSuggestions = [];
 let codeCompletionSuggestions = {};
@@ -313,7 +314,6 @@ function FileIO() {
                     }
                 }, 'workspace.file.selected');
                 messageHub.post({ data: 'File [' + fileName + '] saved.' }, 'status.message');
-                dirty = false;
             } else {
                 reject('file query parameter is not present in the URL');
             }
@@ -404,7 +404,10 @@ function createSaveAction() {
             if (loadingOverview) loadingOverview.classList.remove("hide");
             editor.getAction('editor.action.formatDocument').run().then(() => {
                 let fileIO = new FileIO();
-                fileIO.saveText(editor.getModel().getValue());
+                fileIO.saveText(editor.getModel().getValue()).then(() => {
+                    lastSavedVersionId = editor.getModel().getAlternativeVersionId();
+                    _dirty = false;
+                });
                 if (loadingOverview) loadingOverview.classList.add("hide");
             });
         }
@@ -620,6 +623,10 @@ function traverseAssignment(assignment, assignmentInfo) {
     }
 }
 
+function isDirty(model) {
+    return lastSavedVersionId !== model.getAlternativeVersionId();
+}
+
 (function init() {
     setResourceApiUrl();
     require.config({
@@ -659,9 +666,17 @@ function traverseAssignment(assignment, assignmentInfo) {
 
                     moduleImports.forEach(e => loadSuggestions(e.module, codeCompletionSuggestions));
 
-                    messageHub.subscribe(function () {
-                        if (dirty) {
-                            fileIO.saveText(_editor.getModel().getValue());
+                    messageHub.subscribe(function (msg) {
+                        let file = msg.data && typeof msg.data === 'object' && msg.data.file;
+                        if (file && file !== fileName)
+                            return;
+
+                        let model = _editor.getModel();
+                        if (isDirty(model)) {
+                            fileIO.saveText(model.getValue()).then(() => {
+                                lastSavedVersionId = model.getAlternativeVersionId();
+                                _dirty = false;
+                            });
                         }
                     }, "workbench.editor.save");
 
@@ -674,6 +689,7 @@ function traverseAssignment(assignment, assignmentInfo) {
                         }
                     });
                     let model = monaco.editor.createModel(fileText, fileType || 'text');
+                    lastSavedVersionId = model.getAlternativeVersionId();
                     _editor.setModel(model);
                     if (!readOnly) {
                         _editor.addAction(createSaveAction());
@@ -698,9 +714,10 @@ function traverseAssignment(assignment, assignmentInfo) {
                             );
                         }
                         let newModuleImports = getModuleImports(_editor.getValue());
-                        if (e && !dirty) {
-                            dirty = true;
-                            messageHub.post({ data: fileName }, 'editor.file.dirty');
+                        let dirty = isDirty(_editor.getModel());
+                        if (dirty !== _dirty) {
+                            _dirty = dirty;
+                            messageHub.post({ data: { file: fileName, isDirty: dirty } }, 'editor.file.dirty');
                         }
                         newModuleImports.forEach(function (module) {
                             if (module.module.split("/").length > 0) {
