@@ -299,21 +299,34 @@ function FileIO() {
         return new Promise((resolve, reject) => {
             fileName = fileName || this.resolveFileName();
             if (fileName) {
-                const xhr = new XMLHttpRequest();
-                xhr.open('PUT', resourceApiUrl + fileName);
-                xhr.setRequestHeader('X-Requested-With', 'Fetch');
-                xhr.setRequestHeader('X-CSRF-Token', csrfToken);
-                xhr.setRequestHeader('Dirigible-Editor', 'Monaco');
-                xhr.onload = () => resolve(fileName);
-                xhr.onerror = () => reject(xhr.statusText);
-                xhr.send(text);
-                messageHub.post({ data: fileName }, 'editor.file.saved');
-                messageHub.post({
-                    data: {
-                        path: fileName
+                fetch(resourceApiUrl + fileName, {
+                    method: 'PUT',
+                    body: text,
+                    headers: {
+                        'X-Requested-With': 'Fetch',
+                        'X-CSRF-Token': csrfToken,
+                        'Dirigible-Editor': 'Monaco'
                     }
-                }, 'workspace.file.selected');
-                messageHub.post({ data: 'File [' + fileName + '] saved.' }, 'status.message');
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(response.statusText);
+                        }
+
+                        resolve(fileName);
+
+                        messageHub.post({ data: fileName }, 'editor.file.saved');
+                        messageHub.post({
+                            data: {
+                                path: fileName
+                            }
+                        }, 'workspace.file.selected');
+                        messageHub.post({ data: 'File [' + fileName + '] saved.' }, 'status.message');
+                    })
+                    .catch(ex => {
+                        reject(ex.message);
+                        messageHub.post({ data: { file: fileName, error: ex.message } }, 'editor.file.save.failed');
+                    });
             } else {
                 reject('file query parameter is not present in the URL');
             }
