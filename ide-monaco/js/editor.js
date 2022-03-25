@@ -693,6 +693,18 @@ function isDirty(model) {
                         }
                     }, "workbench.editor.save");
 
+                    messageHub.subscribe(function (msg) {
+                        let file = msg.data.file;
+                        if (file !== fileName)
+                            return;
+
+                        _editor.focus();
+                    }, "editor.focus.gain");
+
+                    _editor.onDidFocusEditorText(function () {
+                        messageHub.post({ data: { file: fileName } }, 'editor.focus.gained');
+                    });
+
                     _editor.onDidChangeModel(function () {
                         if (_fileObject.isGit) {
                             lineDecorations = highlight_changed(
