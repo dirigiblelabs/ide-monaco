@@ -46,7 +46,8 @@ exports.getEditor = function () {
 			"application/database-schema-model+xml",
 			"application/entity-data-model+xml",
 			"application/json+form",
-			"application/xml+calculationview"
+			"application/xml+calculationview",
+			"application/json+hdi"
 		]
 	};
 }
