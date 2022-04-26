@@ -450,6 +450,7 @@ function createSaveAction() {
                 fileIO.saveText(editor.getModel().getValue()).then(() => {
                     lastSavedVersionId = editor.getModel().getAlternativeVersionId();
                     _dirty = false;
+                    messageHub.post({ resourcePath: fileIO.resolveFileName(), isDirty: false }, 'ide-core.setEditorDirty');
                 });
                 if (loadingOverview) loadingOverview.classList.add("hide");
             });
@@ -722,7 +723,7 @@ function isDirty(model) {
                                 _dirty = false;
                             });
                         }
-                    }, "workbench.editor.save");
+                    }, "editor.file.save");
 
                     messageHub.subscribe(function (msg) {
                         let file = msg.data.file;
@@ -773,7 +774,7 @@ function isDirty(model) {
                         let dirty = isDirty(_editor.getModel());
                         if (dirty !== _dirty) {
                             _dirty = dirty;
-                            messageHub.post({ data: { file: fileName, isDirty: dirty } }, 'editor.file.dirty');
+                            messageHub.post({ resourcePath: fileName, isDirty: dirty }, 'ide-core.setEditorDirty');
                         }
                         newModuleImports.forEach(function (module) {
                             if (module.module.split("/").length > 0) {
