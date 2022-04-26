@@ -13,14 +13,14 @@ exports.getEditor = function () {
 	// Do not change without making changes in ide-core.
 	// Do not set to 'editor' as that is a reserved id.
 	return {
-		"id": "monaco",
-		"name": "Code Editor",
-		"factory": "frame",
-		"region": "center-top",
-		"label": "Code Editor",
-		"link": "../ide-monaco/editor.html",
-		"defaultEditor": true,
-		"contentTypes": [
+		id: "monaco",
+		name: "Code Editor",
+		factory: "frame",
+		region: "center",
+		label: "Code Editor",
+		link: "../ide-monaco/editor.html",
+		defaultEditor: true,
+		contentTypes: [
 			"image/svg+xml",
 			"text/plain",
 			"text/html",

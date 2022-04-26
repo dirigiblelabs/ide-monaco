@@ -10,8 +10,9 @@ let _editor;
 let resourceApiUrl;
 let editorUrl;
 let gitApiUrl;
-let loadingOverview = document.getElementsByClassName('loading-overview')[0];
-let loadingMessage = document.getElementsByClassName('loading-message')[0];
+let headElement = document.getElementsByTagName('head')[0];
+let loadingOverview = document.getElementById('loadingOverview');
+let loadingMessage = document.getElementById('loadingMessage');
 let lineDecorations = [];
 let useParameters = false; // Temp boolean used for transitioning to new parameter method.
 let parameters = {
@@ -21,36 +22,29 @@ let parameters = {
     gitName: "",
     file: ""
 };
+let monacoTheme = 'vs-light';
 
-const computeNewLines = (oldText, newText, isWhitespaceIgnored = true) => {
-    if (oldText[oldText.length - 1] !== "\n" || newText[newText.length - 1] !== "\n") {
-        oldText += "\n";
-        newText += "\n"
-    }
-    let lineDiff;
-    if (isWhitespaceIgnored) {
-        lineDiff = Diff.diffTrimmedLines(oldText, newText)
-    } else {
-        lineDiff = Diff.diffLines(oldText, newText)
-    }
-    let addedCount = 0;
-    let addedLines = [];
-    lineDiff.forEach(part => {
-        let { added, removed, value } = part;
-        let count = value.split("\n").length - 1;
-        if (!added && !removed) {
-            addedCount += count
-        }
-        else
-            if (added) {
-                for (let i = 0; i < count; i++) {
-                    addedLines.push(addedCount + i + 1)
-                }
-                addedCount += count
+function setTheme(init = true) {
+    let theme = JSON.parse(localStorage.getItem('DIRIGIBLE.theme'));
+    if (theme.type === 'light') monacoTheme = 'vs-light';
+    else monacoTheme = 'vs-dark';
+    if (theme) {
+        if (!init) {
+            let themeLinks = headElement.querySelectorAll("link[data-type='theme']");
+            for (let i = 0; i < themeLinks.length; i++) {
+                headElement.removeChild(themeLinks[i]);
             }
-    });
-    return addedLines
-};
+        }
+        for (let i = 0; i < theme.links.length; i++) {
+            const link = document.createElement('link');
+            link.type = 'text/css';
+            link.href = theme.links[i];
+            link.rel = 'stylesheet';
+            link.setAttribute("data-type", "theme");
+            headElement.appendChild(link);
+        }
+    }
+}
 
 /*eslint-disable no-extend-native */
 String.prototype.replaceAll = function (search, replacement) {
@@ -345,7 +339,7 @@ function FileIO() {
 
                         resolve(fileName);
 
-                        messageHub.post({ data: fileName }, 'editor.file.saved');
+                        messageHub.post({ resourcePath: fileName, isDirty: false }, 'ide-core.setEditorDirty');
                         messageHub.post({
                             data: {
                                 path: fileName
@@ -409,7 +403,7 @@ function createEditorInstance(readOnly = false) {
                 window.onresize = function () {
                     editor.layout();
                 };
-                if (loadingOverview) loadingOverview.classList.add("hide");
+                if (loadingOverview) loadingOverview.classList.add("dg-hidden");
             } catch (err) {
                 reject(err);
             }
@@ -444,15 +438,14 @@ function createSaveAction() {
         // @param editor The editor instance is passed in as a convinience
         run: function (editor) {
             loadingMessage.innerText = 'Saving...';
-            if (loadingOverview) loadingOverview.classList.remove("hide");
+            if (loadingOverview) loadingOverview.classList.remove("dg-hidden");
             editor.getAction('editor.action.formatDocument').run().then(() => {
                 let fileIO = new FileIO();
                 fileIO.saveText(editor.getModel().getValue()).then(() => {
                     lastSavedVersionId = editor.getModel().getAlternativeVersionId();
                     _dirty = false;
-                    messageHub.post({ resourcePath: fileIO.resolveFileName(), isDirty: false }, 'ide-core.setEditorDirty');
                 });
-                if (loadingOverview) loadingOverview.classList.add("hide");
+                if (loadingOverview) loadingOverview.classList.add("dg-hidden");
             });
         }
     };
@@ -672,6 +665,7 @@ function isDirty(model) {
 }
 
 (function init() {
+    setTheme();
     setResourceApiUrl();
     require.config({
         paths: {
@@ -684,6 +678,11 @@ function isDirty(model) {
 
     //@ts-ignore
     require(['vs/editor/editor.main', 'parser/acorn-loose'], function (monaco, acornLoose) {
+        messageHub.subscribe(function () {
+            setTheme(false);
+            monaco.editor.setTheme(monacoTheme);
+        }, 'ide.themeChange');
+
         let fileIO = new FileIO();
         let fileName = fileIO.resolveFileName();
         let readOnly = fileIO.isReadOnly();
@@ -724,6 +723,16 @@ function isDirty(model) {
                             });
                         }
                     }, "editor.file.save");
+
+                    messageHub.subscribe(function () {
+                        let model = _editor.getModel();
+                        if (isDirty(model)) {
+                            fileIO.saveText(model.getValue()).then(() => {
+                                lastSavedVersionId = model.getAlternativeVersionId();
+                                _dirty = false;
+                            });
+                        }
+                    }, "editor.file.save.all");
 
                     messageHub.subscribe(function (msg) {
                         let file = msg.data.file;
