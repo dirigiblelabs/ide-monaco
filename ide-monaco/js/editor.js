@@ -654,7 +654,7 @@ function traverseAssignment(assignment, assignmentInfo) {
     setResourceApiUrl();
     require.config({
         paths: {
-            'vs': 'monaco-editor/min/vs',
+            'vs': '/webjars/monaco-editor/0.33.0/min/vs',
             'parser': 'js/parser'
         }
     });
