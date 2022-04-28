@@ -296,7 +296,7 @@ function FileIO() {
                             let fileObject = JSON.parse(xhr.responseText);
                             resolve({
                                 isGit: true,
-                                git: fileObject.original || "", // Means it`s not in git
+                                git: fileObject.original || "", // File is not in git
                                 modified: fileObject.modified,
                             });
                         } else {
@@ -307,7 +307,10 @@ function FileIO() {
                             });
                         }
                     } else {
-                        reject(`HTTP ${xhr.status} - ${xhr.statusText}`)
+                        reject(`HTTP ${xhr.status} - ${xhr.statusText}`);
+                        messageHub.post({
+                            message: `Error loading '${fileName}'`
+                        }, 'ide.status.error');
                     }
                     csrfToken = xhr.getResponseHeader("x-csrf-token");
                 };
@@ -339,17 +342,23 @@ function FileIO() {
 
                         resolve(fileName);
 
+                        messageHub.post({ data: fileName }, 'editor.file.saved');
                         messageHub.post({ resourcePath: fileName, isDirty: false }, 'ide-core.setEditorDirty');
                         messageHub.post({
                             data: {
                                 path: fileName
                             }
                         }, 'workspace.file.selected');
-                        messageHub.post({ data: 'File [' + fileName + '] saved.' }, 'status.message');
+                        messageHub.post({
+                            message: `File '${fileName}' saved`
+                        }, 'ide.status.message');
                     })
                     .catch(ex => {
                         reject(ex.message);
-                        messageHub.post({ data: { file: fileName, error: ex.message } }, 'editor.file.save.failed');
+                        messageHub.post({
+                            message: `Error saving '${fileName}'`
+                        }, 'ide.status.error');
+                        // messageHub.post({ data: { file: fileName, error: ex.message } }, 'editor.file.save.failed');
                     });
             } else {
                 reject('file query parameter is not present in the URL');
@@ -587,6 +596,12 @@ function loadModuleSuggestions(modulesSuggestions) {
         let modules = JSON.parse(xhrModules.target.responseText);
         modules.forEach(e => modulesSuggestions.push(e));
     };
+    xhrModules.onerror = function (error) {
+        console.error('Error loading module suggestions', error);
+        messageHub.post({
+            message: 'Error loading module suggestions'
+        }, 'ide.status.error');
+    };
     xhrModules.send();
 }
 
@@ -602,6 +617,12 @@ function loadDTS() {
             let dtsContent = xhrModules.target.responseText;
             monaco.languages.typescript.javascriptDefaults.addExtraLib(dtsContent, "")
             window.sessionStorage.setItem('dtsContent', dtsContent);
+        };
+        xhrModules.onerror = function (error) {
+            console.error('Error loading DTS', error);
+            messageHub.post({
+                message: 'Error loading DTS'
+            }, 'ide.status.error');
         };
         xhrModules.send();
     }
@@ -624,6 +645,12 @@ function loadSuggestions(moduleName, suggestions) {
             let loadedSuggestions = JSON.parse(xhr.target.responseText);
             suggestions[moduleName] = loadedSuggestions;
         }
+    };
+    xhr.onerror = function (error) {
+        console.error('Error loading suggestions', error);
+        messageHub.post({
+            message: 'Error loading suggestions'
+        }, 'ide.status.error');
     };
     xhr.send();
 }
@@ -765,8 +792,12 @@ function isDirty(model) {
                     _editor.addAction(createCloseOthersAction());
                     _editor.addAction(createCloseAllAction());
                     _editor.onDidChangeCursorPosition(function (e) {
-                        let caretInfo = "Line " + e.position.lineNumber + " : Column " + e.position.column;
-                        messageHub.post({ data: caretInfo }, 'status.caret');
+                        messageHub.post(
+                            {
+                                text: `Line ${e.position.lineNumber} : Column ${e.position.column}`
+                            },
+                            'ide.status.caret',
+                        );
                     });
                     _editor.onDidChangeModelContent(function (e) {
                         if (e.changes && e.changes[0].text === ".") {
