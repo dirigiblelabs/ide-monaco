@@ -14,7 +14,6 @@ exports.getEditor = function () {
 	// Do not set to 'editor' as that is a reserved id.
 	return {
 		id: "monaco",
-		name: "Code Editor",
 		factory: "frame",
 		region: "center",
 		label: "Code Editor",

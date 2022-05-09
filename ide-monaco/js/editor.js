@@ -724,199 +724,146 @@ function isDirty(model) {
                                         } else if (keyWordChanged) {
                                             keyWordChanged.keyWord = module.keyWord;
                                         }
-                                    }, "workbench.editor.save");
-
-                                    _editor.onDidChangeModel(function () {
-                                        if (_fileObject.isGit) {
-                                            lineDecorations = highlight_changed(
-                                                getNewLines(_fileObject.git, fileText),
-                                                _editor
-                                            );
-                                        }
-                                    });
-                                    let model = monaco.editor.createModel(fileText, fileType || 'text');
-                                    _editor.setModel(model);
-                                    if (!readOnly) {
-                                        _editor.addAction(createSaveAction());
                                     }
-                                    _editor.addAction(createSearchAction());
-                                    _editor.addAction(createCloseAction());
-                                    _editor.addAction(createCloseOthersAction());
-                                    _editor.addAction(createCloseAllAction());
-                                    _editor.onDidChangeCursorPosition(function (e) {
-                                        let caretInfo = "Line " + e.position.lineNumber + " : Column " + e.position.column;
-                                        messageHub.post({ data: caretInfo }, 'status.caret');
-                                    });
-                                    _editor.onDidChangeModelContent(function (e) {
-                                        if (e.changes && e.changes[0].text === ".") {
-                                            codeCompletionAssignments = parseAssignments(acornLoose, _editor.getValue());
-                                        }
-                                        if (_fileObject.isGit && e.changes) {
-                                            let content = _editor.getValue();
-                                            lineDecorations = highlight_changed(
-                                                getNewLines(_fileObject.git, content),
-                                                _editor
-                                            );
-                                        }
-                                        let newModuleImports = getModuleImports(_editor.getValue());
-                                        if (e && !dirty) {
-                                            dirty = true;
-                                            messageHub.post({ data: fileName }, 'editor.file.dirty');
-                                        }
-                                        newModuleImports.forEach(function (module) {
-                                            if (module.module.split("/").length > 0) {
-                                                let newModule = moduleImports.filter(e => e.keyWord === module.keyWord && e.module === module.module)[0];
-                                                let moduleChanged = moduleImports.filter(e => e.keyWord === module.keyWord && e.module !== module.module)[0];
-                                                let keyWordChanged = moduleImports.filter(e => e.keyWord !== module.keyWord && e.module === module.module)[0];
-                                                if (!newModule) {
-                                                    loadSuggestions(module.module, codeCompletionSuggestions);
-                                                    moduleImports.push(module);
-                                                } else if (moduleChanged) {
-                                                    moduleChanged.module = module.module;
-                                                    loadSuggestions(module.module, codeCompletionSuggestions);
-                                                } else if (keyWordChanged) {
-                                                    keyWordChanged.keyWord = module.keyWord;
+                                });
+                            });
+
+                            monaco.languages.typescript.javascriptDefaults.addExtraLib('/** Loads external module: \n\n> ```\nlet res = require("http/v4/response");\nres.println("Hello World!");``` */ var require = function(moduleName: string) {return new Module();};', 'js:require.js');
+                            monaco.languages.typescript.javascriptDefaults.addExtraLib('/** $. XSJS API */ var $: any;', 'ts:$.js');
+                            loadDTS();
+
+                            monaco.languages.registerCompletionItemProvider('javascript', {
+                                triggerCharacters: ["\"", "'"],
+                                provideCompletionItems: function (model, position) {
+                                    let token = model.getValueInRange({
+                                        startLineNumber: position.lineNumber,
+                                        startColumn: 1,
+                                        endLineNumber: position.lineNumber,
+                                        endColumn: position.column
+                                    })
+                                    if (token.indexOf('require("') < 0 && token.indexOf('require(\'') < 0
+                                        && token.indexOf('from "') < 0 && token.indexOf('from \'') < 0) {
+                                        return { suggestions: [] };
+                                    }
+                                    let wordPosition = model.getWordUntilPosition(position);
+                                    let word = wordPosition.word;
+                                    let range = {
+                                        startLineNumber: position.lineNumber,
+                                        endLineNumber: position.lineNumber,
+                                        startColumn: wordPosition.startColumn,
+                                        endColumn: wordPosition.endColumn
+                                    };
+                                    return {
+                                        suggestions: modulesSuggestions
+                                            .filter(function (e) {
+                                                if (word.length > 0) {
+                                                    return e.name.toLowerCase().indexOf(word.toLowerCase()) >= 0;
                                                 }
-                                            }
-                                        });
-                                    });
-
-                                    monaco.languages.typescript.javascriptDefaults.addExtraLib('/** Loads external module: \n\n> ```\nlet res = require("http/v4/response");\nres.println("Hello World!");``` */ var require = function(moduleName: string) {return new Module();};', 'js:require.js');
-                                    monaco.languages.typescript.javascriptDefaults.addExtraLib('/** $. XSJS API */ var $: any;', 'ts:$.js');
-                                    loadDTS();
-
-                                    monaco.languages.registerCompletionItemProvider('javascript', {
-                                        triggerCharacters: ["\"", "'"],
-                                        provideCompletionItems: function (model, position) {
-                                            let token = model.getValueInRange({
-                                                startLineNumber: position.lineNumber,
-                                                startColumn: 1,
-                                                endLineNumber: position.lineNumber,
-                                                endColumn: position.column
+                                                return true;
+                                            }).map(function (e) {
+                                                return {
+                                                    label: e.name,
+                                                    kind: monaco.languages.CompletionItemKind.Module,
+                                                    documentation: e.documentation,
+                                                    detail: e.description,
+                                                    insertText: e.name,
+                                                    range: range
+                                                }
                                             })
-                                            if (token.indexOf('require("') < 0 && token.indexOf('require(\'') < 0
-                                                && token.indexOf('from "') < 0 && token.indexOf('from \'') < 0) {
-                                                return { suggestions: [] };
-                                            }
-                                            let wordPosition = model.getWordUntilPosition(position);
-                                            let word = wordPosition.word;
-                                            let range = {
-                                                startLineNumber: position.lineNumber,
-                                                endLineNumber: position.lineNumber,
-                                                startColumn: wordPosition.startColumn,
-                                                endColumn: wordPosition.endColumn
-                                            };
-                                            return {
-                                                suggestions: modulesSuggestions
-                                                    .filter(function (e) {
-                                                        if (word.length > 0) {
-                                                            return e.name.toLowerCase().indexOf(word.toLowerCase()) >= 0;
-                                                        }
-                                                        return true;
-                                                    }).map(function (e) {
-                                                        return {
-                                                            label: e.name,
-                                                            kind: monaco.languages.CompletionItemKind.Module,
-                                                            documentation: e.documentation,
-                                                            detail: e.description,
-                                                            insertText: e.name,
-                                                            range: range
-                                                        }
-                                                    })
-                                            };
-                                        }
-                                    });
-                                    monaco.languages.registerCompletionItemProvider('javascript', {
-                                        triggerCharacters: ["."],
-                                        provideCompletionItems: function (model, position) {
-                                            let token = model.getValueInRange({
-                                                startLineNumber: position.lineNumber,
-                                                startColumn: 1,
-                                                endLineNumber: position.lineNumber,
-                                                endColumn: position.column
-                                            })
-
-                                            let moduleImport = moduleImports.filter(e => token.match(new RegExp(e.keyWord + "." + "([a-zA-Z0-9]+)?", "g")))[0];
-                                            // let afterDotToken = token.substring(token.indexOf(".") + 1);
-                                            let tokenParts = token.split(".");
-                                            let moduleName = moduleImport ? moduleImport.module : null;
-                                            if (tokenParts != null && tokenParts.length > 2) {
-                                                moduleName = null;
-                                            }
-                                            let nestedObjectKeyword = null;
-                                            if (!moduleName) {
-                                                let nestedKeyword = token.split(" ").filter(e => e.indexOf(".") > 0)[0]
-                                                if (nestedKeyword) {
-                                                    nestedObjectKeyword = nestedKeyword.split(".")[0];
-                                                }
-                                            }
-                                            if (!moduleName && !nestedObjectKeyword) {
-                                                return { suggestions: [] };
-                                            }
-                                            let wordPosition = model.getWordUntilPosition(position);
-                                            let word = wordPosition.word;
-                                            let range = {
-                                                startLineNumber: position.lineNumber,
-                                                endLineNumber: position.lineNumber,
-                                                startColumn: wordPosition.startColumn,
-                                                endColumn: wordPosition.endColumn
-                                            };
-                                            let suggestions = [];
-                                            let moduleSuggestions = codeCompletionSuggestions[moduleName];
-                                            if (moduleSuggestions) {
-                                                Object.keys(moduleSuggestions["exports"]).forEach(suggestionName => {
-                                                    let suggestion = moduleSuggestions["exports"][suggestionName];
-                                                    suggestion.name = suggestion.definition;
-                                                    suggestions.push(suggestion);
-                                                });
-                                            } else if (nestedObjectKeyword) {
-                                                let assignment = codeCompletionAssignments[nestedObjectKeyword];
-                                                if (assignment) {
-                                                    let assignmentInfo = {
-                                                        parentModule: null,
-                                                        methods: []
-                                                    };
-                                                    traverseAssignment(assignment, assignmentInfo);
-
-                                                    let parentObject = "exports";
-                                                    for (let i = 0; i < assignmentInfo.methods.length; i++) {
-                                                        parentObject = codeCompletionSuggestions[assignmentInfo.parentModule][parentObject][assignmentInfo.methods[i]].returnType;
-                                                    }
-
-                                                    let moduleSuggestions = codeCompletionSuggestions[assignmentInfo.parentModule];
-                                                    Object.keys(moduleSuggestions[parentObject]).forEach(suggestionName => {
-                                                        let suggestion = moduleSuggestions[parentObject][suggestionName];
-                                                        suggestion.name = suggestion.definition;
-                                                        suggestions.push(suggestion);
-                                                    });
-                                                }
-                                            }
-                                            return {
-                                                suggestions: suggestions
-                                                    .filter(function (e) {
-                                                        if (word.length > 0) {
-                                                            return e.name.toLowerCase().startsWith(word.toLowerCase());
-                                                        }
-                                                        return true;
-                                                    })
-                                                    .map(function (e) {
-                                                        return {
-                                                            label: e.name,
-                                                            kind: e.isFunction ? monaco.languages.CompletionItemKind.Function : monaco.languages.CompletionItemKind.Field,
-                                                            documentation: {
-                                                                value: e.documentation
-                                                            },
-                                                            detail: e.isFunction ? "function " + e.name : e.name,
-                                                            insertText: e.name,
-                                                            range: range
-                                                        }
-                                                    })
-                                            };
-                                        }
-                                    });
+                                    };
                                 }
                             });
+                            monaco.languages.registerCompletionItemProvider('javascript', {
+                                triggerCharacters: ["."],
+                                provideCompletionItems: function (model, position) {
+                                    let token = model.getValueInRange({
+                                        startLineNumber: position.lineNumber,
+                                        startColumn: 1,
+                                        endLineNumber: position.lineNumber,
+                                        endColumn: position.column
+                                    })
+
+                                    let moduleImport = moduleImports.filter(e => token.match(new RegExp(e.keyWord + "." + "([a-zA-Z0-9]+)?", "g")))[0];
+                                    // let afterDotToken = token.substring(token.indexOf(".") + 1);
+                                    let tokenParts = token.split(".");
+                                    let moduleName = moduleImport ? moduleImport.module : null;
+                                    if (tokenParts != null && tokenParts.length > 2) {
+                                        moduleName = null;
+                                    }
+                                    let nestedObjectKeyword = null;
+                                    if (!moduleName) {
+                                        let nestedKeyword = token.split(" ").filter(e => e.indexOf(".") > 0)[0]
+                                        if (nestedKeyword) {
+                                            nestedObjectKeyword = nestedKeyword.split(".")[0];
+                                        }
+                                    }
+                                    if (!moduleName && !nestedObjectKeyword) {
+                                        return { suggestions: [] };
+                                    }
+                                    let wordPosition = model.getWordUntilPosition(position);
+                                    let word = wordPosition.word;
+                                    let range = {
+                                        startLineNumber: position.lineNumber,
+                                        endLineNumber: position.lineNumber,
+                                        startColumn: wordPosition.startColumn,
+                                        endColumn: wordPosition.endColumn
+                                    };
+                                    let suggestions = [];
+                                    let moduleSuggestions = codeCompletionSuggestions[moduleName];
+                                    if (moduleSuggestions) {
+                                        Object.keys(moduleSuggestions["exports"]).forEach(suggestionName => {
+                                            let suggestion = moduleSuggestions["exports"][suggestionName];
+                                            suggestion.name = suggestion.definition;
+                                            suggestions.push(suggestion);
+                                        });
+                                    } else if (nestedObjectKeyword) {
+                                        let assignment = codeCompletionAssignments[nestedObjectKeyword];
+                                        if (assignment) {
+                                            let assignmentInfo = {
+                                                parentModule: null,
+                                                methods: []
+                                            };
+                                            traverseAssignment(assignment, assignmentInfo);
+
+                                            let parentObject = "exports";
+                                            for (let i = 0; i < assignmentInfo.methods.length; i++) {
+                                                parentObject = codeCompletionSuggestions[assignmentInfo.parentModule][parentObject][assignmentInfo.methods[i]].returnType;
+                                            }
+
+                                            let moduleSuggestions = codeCompletionSuggestions[assignmentInfo.parentModule];
+                                            Object.keys(moduleSuggestions[parentObject]).forEach(suggestionName => {
+                                                let suggestion = moduleSuggestions[parentObject][suggestionName];
+                                                suggestion.name = suggestion.definition;
+                                                suggestions.push(suggestion);
+                                            });
+                                        }
+                                    }
+                                    return {
+                                        suggestions: suggestions
+                                            .filter(function (e) {
+                                                if (word.length > 0) {
+                                                    return e.name.toLowerCase().startsWith(word.toLowerCase());
+                                                }
+                                                return true;
+                                            })
+                                            .map(function (e) {
+                                                return {
+                                                    label: e.name,
+                                                    kind: e.isFunction ? monaco.languages.CompletionItemKind.Function : monaco.languages.CompletionItemKind.Field,
+                                                    documentation: {
+                                                        value: e.documentation
+                                                    },
+                                                    detail: e.isFunction ? "function " + e.name : e.name,
+                                                    insertText: e.name,
+                                                    range: range
+                                                }
+                                            })
+                                    };
+                                }
+                            });
+                        }
                     });
+            });
 
         monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
             noSemanticValidation: false,
