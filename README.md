@@ -18,14 +18,6 @@ This module uses some third party libraries.
 
 ## Update
 
-To update the Monaco version:
-
-1. Go to [dirigiblelabs/monaco-editor](https://github.com/dirigiblelabs/monaco-editor)
-1. Fetch the latest changes from the original repository
-1. Run `npm run release`
-1. Copy the release artefacts from the `release` folder
-1. Replace the content of [ide-monaco/monaco-editor](https://github.com/dirigiblelabs/ide-monaco/tree/master/ide-monaco/monaco-editor) with the content from the `release` folder
-
 To update the css-format-monaco version:
 
 1. Get the latest version - `npm i css-format-monaco`
