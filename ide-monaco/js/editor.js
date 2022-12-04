@@ -998,6 +998,7 @@ function isDirty(model) {
                 'editorWidget.background': '#1c2228',
                 'editorWidget.border': '#495767',
                 'editorSuggestWidget.background': '#29313a',
+                'dropdown.background': '#29313a',
             }
         });
         monaco.editor.setTheme(monacoTheme);
