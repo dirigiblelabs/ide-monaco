@@ -4,7 +4,7 @@ let headElement = document.getElementsByTagName('head')[0];
 function setTheme(init = true) {
     let theme = JSON.parse(localStorage.getItem('DIRIGIBLE.theme') || '{}');
     if (theme.type === 'light') monacoTheme = 'vs-light';
-    else monacoTheme = 'vs-dark';
+    else monacoTheme = 'quartz-dark';
     if (theme.links) {
         if (!init) {
             let themeLinks = headElement.querySelectorAll("link[data-type='theme']");
